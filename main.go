@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -58,18 +57,9 @@ func main() {
 			return
 		}
 		if err := hook.Run(); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			c.String(http.StatusBadRequest, err.Error())
 			return
 		}
-		fmt.Printf("-> %+v\n", string(hook.Steps[0].Response.Stderr))
-		// if res.StatusOk() {
-		// 	c.JSON(http.StatusBadRequest, gin.H{
-		// 		"error": {
-		// 			"message": res.Stderr,
-		// 		},
-		// 		"exit_code": res.ExitCode})
-		// }
-		// c.String(http.StatusOK)
 	})
 
 	router.Run(listenAddr)

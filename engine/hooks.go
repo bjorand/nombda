@@ -17,12 +17,21 @@ var (
 )
 
 type Handler struct {
-	Name    string            `yaml:"name"`
-	Command string            `yaml:"command"`
-	Vars    map[string]string `yaml:"vars"`
+	Name          string `yaml:"name"`
+	CommandModule `yaml:",inline"`
+	HandlerName   string `yaml:"handler"`
 }
 
-type Command struct {
+type CommandModule struct {
+	Command              string            `yaml:"command"`
+	Retry                int               `yaml:"retry"`
+	Interval             int               `yaml:"interval"`
+	Timeout              int               `yaml:"timeout"`
+	OnFailure            string            `yaml:"on_failure"`
+	ContinueAfterFailure bool              `yaml:"continue_after_failure"`
+	OnlyIf               string            `yaml:"only_if"`
+	Register             string            `yaml:"register"`
+	Vars                 map[string]string `yaml:"vars"`
 }
 
 type Hook struct {
@@ -31,16 +40,10 @@ type Hook struct {
 }
 
 type HookStep struct {
-	Name                 string `yaml:"name"`
-	Command              string `yaml:"command"`
-	Retry                int    `yaml:"retry"`
-	Interval             int    `yaml:"interval"`
-	Timeout              int    `yaml:"timeout"`
-	OnFailure            string `yaml:"on_failure"`
-	ContinueAfterFailure bool   `yaml:"continue_after_failure"`
-	OnlyIf               string `yaml:"only_if"`
-	Register             string `yaml:"register"`
-	Response             *HookStepRunResponse
+	Name          string `yaml:"name"`
+	CommandModule `yaml:",inline"`
+	Response      *HookStepRunResponse
+	HandlerName   string `yaml:"handler"`
 }
 
 type HookStepRunResponse struct {
@@ -103,6 +106,20 @@ func (h *Handler) Run() ([]byte, error) {
 }
 func (h *Hook) Run() error {
 	for _, step := range h.Steps {
+		if step.HandlerName != "" {
+			log.Infof("Running handler %s", step.HandlerName)
+			handlers := h.Handlers[step.HandlerName]
+			if handlers == nil {
+				return fmt.Errorf("Unknown handler %s", step.HandlerName)
+			}
+			for _, handler := range handlers {
+				_, err := handler.Run()
+				if err != nil {
+					return fmt.Errorf("Handler [%s] %s failed: %s", step.OnFailure, handler.Name, err.Error())
+				}
+			}
+			continue
+		}
 		step.Response = &HookStepRunResponse{}
 
 		if step.OnlyIf != "" {
@@ -115,6 +132,9 @@ func (h *Hook) Run() error {
 		log.Infof("Running %s", step.Name)
 		_, err := localRun(step.Command, nil)
 		if err != nil {
+			if step.ContinueAfterFailure {
+				continue
+			}
 			if step.OnFailure != "" {
 				handlers := h.Handlers[step.OnFailure]
 				for _, handler := range handlers {
