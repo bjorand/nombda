@@ -51,8 +51,8 @@ type HookStepRunResponse struct {
 	Stderr []byte
 }
 
-func ReadHook(id string, action string) (*Hook, error) {
-	data, err := ioutil.ReadFile(fmt.Sprintf("tmp/%s/%s.yml", id, action))
+func ReadHook(path string, id string, action string) (*Hook, error) {
+	data, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s.yml", path, id, action))
 	if err != nil {
 		return nil, err
 	}

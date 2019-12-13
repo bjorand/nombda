@@ -15,6 +15,7 @@ var (
 	log        = logrus.New()
 	listenAddr string
 	token      = os.Getenv("NOMBDA_TOKEN")
+	configDir  = os.Getenv("CONFIG_DIR")
 )
 
 type tokenHeader struct {
@@ -37,6 +38,11 @@ func main() {
 		log.Fatal("Empty NOMBDA_TOKEN environment variable. Failing to start.")
 	}
 
+	configDir = strings.TrimSpace(configDir)
+	if configDir == "" {
+		log.Fatal("Empty CONFIG_DIR environment variable. Failing to start.")
+	}
+
 	router := gin.Default()
 	router.Use(gin.Recovery())
 	router.Use(Base())
@@ -51,7 +57,7 @@ func main() {
 			c.JSON(http.StatusUnauthorized, gin.H{"status": "unauthorized"})
 			return
 		}
-		hook, err := engine.ReadHook(c.Param("id"), c.Param("action"))
+		hook, err := engine.ReadHook(configDir, c.Param("id"), c.Param("action"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 			return
