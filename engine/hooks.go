@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -49,6 +51,43 @@ type HookStep struct {
 type HookStepRunResponse struct {
 	Stdout []byte
 	Stderr []byte
+}
+
+type HookEngine struct {
+	ConfigDir string
+}
+
+func NewHookEngine(configDir string) *HookEngine {
+	return &HookEngine{
+		ConfigDir: configDir,
+	}
+}
+
+func (e *HookEngine) Hooks() ([]*Hook, error) {
+	actionsFilename, err := filepath.Glob(e.ConfigDir + "/*/*.yml")
+	if err != nil {
+		return nil, err
+	}
+
+	var hooks []*Hook
+
+	for _, actionFilename := range actionsFilename {
+		actionFilenameSplitted := strings.Split(actionFilename, "/")
+		if len(actionFilenameSplitted) < 2 {
+			return nil, fmt.Errorf("Action found in invalid path %s", actionFilename)
+		}
+		id := actionFilenameSplitted[len(actionFilenameSplitted)-2]
+		actionFileName := filepath.Base(actionFilename)
+		extension := filepath.Ext(actionFileName)
+		action := actionFileName[0 : len(actionFileName)-len(extension)]
+		hook, err := ReadHook(e.ConfigDir, id, action)
+		if err != nil {
+			return nil, err
+		}
+		hooks = append(hooks, hook)
+	}
+
+	return hooks, nil
 }
 
 func ReadHook(path string, id string, action string) (*Hook, error) {

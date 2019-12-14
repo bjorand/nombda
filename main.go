@@ -4,7 +4,6 @@ import (
 	"flag"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/bjorand/nombda/engine"
@@ -18,6 +17,7 @@ var (
 	token      = os.Getenv("NOMBDA_TOKEN")
 	configDir  = os.Getenv("CONFIG_DIR")
 	version    string
+	hookEngine *engine.HookEngine
 )
 
 type tokenHeader struct {
@@ -58,6 +58,8 @@ func main() {
 		log.Fatal("Empty CONFIG_DIR environment variable. Failing to start.")
 	}
 
+	hookEngine := engine.NewHookEngine(configDir)
+
 	router := gin.Default()
 	router.Use(gin.Recovery())
 	router.Use(Base())
@@ -66,25 +68,16 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"version": version})
 	})
 
-	router.GET("/hooks/", func(c *gin.Context) {
+	router.GET("/hooks", func(c *gin.Context) {
 		if !isAuthenticated(c) {
 			return
 		}
-		hooksFilename, err := filepath.Glob(configDir + "/*/*.yml")
+		hooks, err := hookEngine.Hooks()
 		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 			return
 		}
-		var hooksName []string
-
-		for _, hookFilename := range hooksFilename {
-			hookName := filepath.Base(hookFilename)
-			var extension = filepath.Ext(hookName)
-			var name = hookName[0 : len(hookName)-len(extension)]
-			hooksName = append(hooksName, name)
-
-		}
-		c.JSON(http.StatusOK, gin.H{"hooks": hooksName})
+		c.JSON(http.StatusOK, gin.H{"hooks": hooks})
 	})
 
 	router.POST("/hooks/:id/:action", func(c *gin.Context) {
