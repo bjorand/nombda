@@ -17,6 +17,7 @@ var (
 	listenAddr string
 	token      = os.Getenv("NOMBDA_TOKEN")
 	configDir  = os.Getenv("CONFIG_DIR")
+	version    string
 )
 
 type tokenHeader struct {
@@ -60,6 +61,10 @@ func main() {
 	router := gin.Default()
 	router.Use(gin.Recovery())
 	router.Use(Base())
+
+	router.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"version": version})
+	})
 
 	router.GET("/hooks/", func(c *gin.Context) {
 		if !isAuthenticated(c) {

@@ -4,11 +4,11 @@ WORKDIR /build/nombda
 COPY . .
 
 RUN go get -d -v ./...
-RUN go install -v ./...
+RUN make build
 
 FROM debian
 
-COPY --from=builder /go/bin/nombda /usr/local/bin/nombda
+COPY --from=builder nombda /usr/local/bin/nombda
 
 EXPOSE 8080
 
