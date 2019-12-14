@@ -8,7 +8,7 @@ RUN make build
 
 FROM debian
 
-COPY --from=builder nombda /usr/local/bin/nombda
+COPY --from=builder /build/nombda/nombda /usr/local/bin/nombda
 
 EXPOSE 8080
 
