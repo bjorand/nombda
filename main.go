@@ -74,8 +74,9 @@ func main() {
 
 		for _, hookFilename := range hooksFilename {
 			hookName := filepath.Base(hookFilename)
-			hookName = strings.TrimRight(hookName, ".yml")
-			hooksName = append(hooksName, hookName)
+			var extension = filepath.Ext(hookName)
+			var name = hookName[0 : len(hookName)-len(extension)]
+			hooksName = append(hooksName, name)
 
 		}
 		c.JSON(http.StatusOK, gin.H{"hooks": hooksName})
