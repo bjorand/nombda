@@ -17,7 +17,7 @@ Use cases are:
 go get -v github.com/bjorand/nombda
 ```
 
-## Usage
+## Running nombda
 ```
 NOMBDA_TOKEN=xxx CONFIG_DIR=/nombda/conf.d nombda -listen-addr 0.0.0.0:8080
 ```
@@ -26,7 +26,9 @@ Check that nombda is running:
 curl localhost:8080/ping
 ```
 
-Then you can create your first hook file in `CONFIG_DIR`.
+## Create your first hook
+
+You can create your first hook file in `CONFIG_DIR`.
 
 Let's say we have a static website served by Nginx from a local Git repository.
 
