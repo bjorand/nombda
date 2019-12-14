@@ -13,6 +13,7 @@ RUN apt-get update && \
     apt-transport-https \
     ca-certificates \
     curl \
+    git \
     gnupg2 \
   	lsb-release && \
     curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
