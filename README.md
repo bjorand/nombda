@@ -86,4 +86,4 @@ curl -XPOST -H"Auth-token=xxx" localhost:8080/mywebsite/git_update
 
 ## License
 
-[MIT License](https://github.com/bjorand/nombda-github-action/blob/master/LICENSE)
+[MIT License](https://github.com/bjorand/nombda/blob/master/LICENSE)
