@@ -34,6 +34,7 @@ type CommandModule struct {
 	OnlyIf               string            `yaml:"only_if"`
 	Register             string            `yaml:"register"`
 	Vars                 map[string]string `yaml:"vars"`
+	Cd                   string            `yaml:"cd"`
 }
 
 type Hook struct {
@@ -102,12 +103,15 @@ func ReadHook(path string, id string, action string) (*Hook, error) {
 	return h, nil
 }
 
-func localRun(command string, envs map[string]string) ([]byte, error) {
+func localRun(command string, envs map[string]string, cd string) ([]byte, error) {
 	fmt.Println(command, envs)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", command)
 	cmd.Env = os.Environ()
+	if cd != "" {
+		cmd.Dir = cd
+	}
 	for k, v := range envs {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
@@ -137,7 +141,7 @@ func localRun(command string, envs map[string]string) ([]byte, error) {
 }
 
 func (h *Handler) Run() ([]byte, error) {
-	stdoutBytes, err := localRun(h.Command, h.Vars)
+	stdoutBytes, err := localRun(h.Command, h.Vars, h.Cd)
 	if err != nil {
 		return nil, err
 	}
@@ -145,6 +149,16 @@ func (h *Handler) Run() ([]byte, error) {
 }
 func (h *Hook) Run() error {
 	for _, step := range h.Steps {
+		// only_if must be the first clause
+		if step.OnlyIf != "" {
+			_, err := localRun(step.OnlyIf, nil, step.Cd)
+			if err != nil {
+				log.Infof("Skipping %s", step.Name)
+				continue
+			}
+		}
+
+		// if step as a handler description runs it
 		if step.HandlerName != "" {
 			log.Infof("Running handler %s", step.HandlerName)
 			handlers := h.Handlers[step.HandlerName]
@@ -161,33 +175,30 @@ func (h *Hook) Run() error {
 		}
 		step.Response = &HookStepRunResponse{}
 
-		if step.OnlyIf != "" {
-			_, err := localRun(step.OnlyIf, nil)
+		// if step as a handler description runs it
+		if step.Command != "" {
+			log.Infof("Running command %s", step.Name)
+			_, err := localRun(step.Command, nil, step.Cd)
 			if err != nil {
-				log.Infof("Skipping %s", step.Name)
-				continue
-			}
-		}
-		log.Infof("Running %s", step.Name)
-		_, err := localRun(step.Command, nil)
-		if err != nil {
-			if step.ContinueAfterFailure {
-				continue
-			}
-			if step.OnFailure != "" {
-				handlers := h.Handlers[step.OnFailure]
-				for _, handler := range handlers {
-					_, err := handler.Run()
-					if err != nil {
-						return fmt.Errorf("Handler [%s] %s failed: %s", step.OnFailure, handler.Name, err.Error())
+				// run on_failure handler if any
+				if step.OnFailure != "" {
+					handlers := h.Handlers[step.OnFailure]
+					if len(handlers) == 0 {
+						return fmt.Errorf("Handler [%s] not found", step.OnFailure)
 					}
+					for _, handler := range handlers {
+						_, err := handler.Run()
+						if err != nil {
+							return fmt.Errorf("Handler [%s] %s failed: %s", step.OnFailure, handler.Name, err.Error())
+						}
+					}
+					if !step.ContinueAfterFailure {
+						return fmt.Errorf("Quit after handler [%s] successful", step.OnFailure)
+					}
+					continue
 				}
-				if !step.ContinueAfterFailure {
-					return fmt.Errorf("Handler [%s] successful", step.OnFailure)
-				}
-				continue
+				return err
 			}
-			return err
 		}
 	}
 	return nil
