@@ -1,19 +1,19 @@
 handlers:
   test_register:
     - name: test foo value from handler
-      command: test "${foo}" == "bar"
+      command: test "${foo}" = "bar"
     - name: register new value
       command: echo foo
       register: bar
     - name: test bar value
-      command: test "${bar}" == "foo"
+      command: test "${bar}" = "foo"
 
 tasks:
   - name: register bar=foo
     command: echo bar
     register: foo
   - name: test foo register value
-    command: test "${foo}" == "bar"
+    command: test "${foo}" = "bar"
   - handler: test_register
   - name: test bar register value set from handler
-    command: test "${bar}" == "foo"
+    command: test "${bar}" = "foo"

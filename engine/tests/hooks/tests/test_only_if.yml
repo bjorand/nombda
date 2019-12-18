@@ -2,8 +2,8 @@ tasks:
   - name: this should be skipped
     command: echo foo
     register: foo
-    only_if: test "A" == "B"
+    only_if: test "A" = "B"
   - name: this should not be skipped
     command: echo bar
     register: bar
-    only_if: ls /
+    only_if: test "A" = "A"
