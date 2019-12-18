@@ -1,0 +1,10 @@
+FROM golang:latest
+
+WORKDIR /build/nombda
+
+COPY . .
+
+
+RUN go get -v -t -d ./...
+
+RUN go version && go test -v ./...
