@@ -6,4 +6,4 @@ tasks:
   - name: this should not be skipped
     command: echo bar
     register: bar
-    only_if: test "A" == "A"
+    only_if: ls /
