@@ -47,6 +47,7 @@ handlers:
   rollback:
     - name: is rollback possible
       command: git rev-parse --short $(cat /var/www/.website_rollback_sha1)
+      cd: /var/www/website
     - handler: reload_nginx
     - handler: healthcheck
 

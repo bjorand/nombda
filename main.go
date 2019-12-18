@@ -31,17 +31,28 @@ func Base() gin.HandlerFunc {
 	}
 }
 
-func isAuthenticated(c *gin.Context) bool {
+func AuthRequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if isTokenAuthenticated(c) {
+			c.Next()
+			return
+		}
+		// c.JSON(http.StatusUnauthorized, gin.H{"status": "unauthorized"})
+		// c.
+
+	}
+}
+
+func isTokenAuthenticated(c *gin.Context) bool {
 	t := tokenHeader{}
 	if err := c.ShouldBindHeader(&t); err != nil {
-		c.JSON(500, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
 		return false
 	}
 	if t.AuthToken != token {
-		c.JSON(http.StatusUnauthorized, gin.H{"status": "unauthorized"})
-		return false
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"status": "unauthorized"})
 	}
-	return true
+	return false
 }
 
 func main() {
@@ -64,14 +75,15 @@ func main() {
 	router.Use(gin.Recovery())
 	router.Use(Base())
 
+	authorized := router.Group("/")
+
+	authorized.Use(AuthRequired())
+
 	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"version": version})
 	})
 
-	router.GET("/hooks", func(c *gin.Context) {
-		if !isAuthenticated(c) {
-			return
-		}
+	authorized.GET("/hooks", func(c *gin.Context) {
 		hooks, err := hookEngine.Hooks()
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
@@ -80,20 +92,46 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"hooks": hooks})
 	})
 
-	router.POST("/hooks/:id/:action", func(c *gin.Context) {
-		if !isAuthenticated(c) {
-			return
-		}
-
+	authorized.POST("/hooks/:id/:action", func(c *gin.Context) {
 		hook, err := engine.ReadHook(configDir, c.Param("id"), c.Param("action"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 			return
 		}
-		if err := hook.Run(); err != nil {
+		run, err := hook.Run()
+		if err != nil {
 			c.String(http.StatusBadRequest, err.Error())
 			return
 		}
+		c.JSON(http.StatusOK, gin.H{"id": run.ID})
+	})
+
+	authorized.GET("/hooks/:id/:action/:run_id", func(c *gin.Context) {
+		hook, err := engine.ReadHook(configDir, c.Param("id"), c.Param("action"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
+		run, err := hook.GetRun(c.Param("run_id"))
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"message": err})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"run": run})
+	})
+
+	authorized.GET("/hooks/:id/:action/:run_id/log", func(c *gin.Context) {
+		hook, err := engine.ReadHook(configDir, c.Param("id"), c.Param("action"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
+		run, err := hook.GetRun(c.Param("run_id"))
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"message": err})
+			return
+		}
+		c.String(http.StatusOK, run.Log())
 	})
 
 	router.Run(listenAddr)
