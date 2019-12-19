@@ -54,11 +54,12 @@ type Task struct {
 }
 
 type Hook struct {
-	Name     string
-	Action   string
-	Handlers map[string][]*Task `yaml:"handlers"`
-	Tasks    []*Task            `yaml:"tasks"`
-	Runs     []*Run
+	Name       string
+	Action     string
+	Handlers   map[string][]*Task `yaml:"handlers"`
+	Tasks      []*Task            `yaml:"tasks"`
+	GlobalVars map[string]string  `yaml:"vars"`
+	Runs       []*Run
 }
 
 // type HookStep struct {
@@ -214,15 +215,15 @@ func (r *Run) logError(input ...string) {
 func (r *Run) Interpolate(input string, vars map[string]string) string {
 	replacers := make([]string, len(r.Registers)*2)
 	if len(r.Registers) > 0 {
-		for k, v := range r.Registers {
+		for k, _ := range r.Registers {
 			replacers = append(replacers, fmt.Sprintf("${var.%s}", k))
-			replacers = append(replacers, v)
+			replacers = append(replacers, fmt.Sprintf("${%s}", k))
 		}
 	}
 	if len(r.Secrets) > 0 {
-		for k, v := range r.Secrets {
+		for k, _ := range r.Secrets {
 			replacers = append(replacers, fmt.Sprintf("${secret.%s}", k))
-			replacers = append(replacers, v)
+			replacers = append(replacers, fmt.Sprintf("${%s}", k))
 		}
 	}
 
@@ -268,10 +269,29 @@ func (r *Run) RunHandler(src *Task, handlerName string) error {
 	return nil
 }
 
+func (r *Run) MakeEnv(more map[string]string) map[string]string {
+	env := make(map[string]string)
+	for k, v := range r.Secrets {
+		env[k] = v
+	}
+	for k, v := range r.Hook.GlobalVars {
+		env[k] = v
+	}
+	for k, v := range r.Registers {
+		env[k] = v
+	}
+	for k, v := range more {
+		env[k] = v
+	}
+	return env
+}
+
 func (r *Run) RunTask(t *Task) error {
 	// only_if is be the first condition
 	if t.OnlyIf != "" {
-		output, exitCode, err := localRun(r.Interpolate(t.OnlyIf, t.Vars), nil, t.Cd)
+		cmd := r.Interpolate(t.OnlyIf, r.MakeEnv(t.Vars))
+		output, exitCode, err := localRun(cmd, r.MakeEnv(t.Vars), t.Cd)
+		r.logInfo("Running command", cmd)
 		r.ExitCode = exitCode
 		r.logOutput(string(output))
 		if err != nil {
@@ -305,7 +325,9 @@ func (r *Run) RunTask(t *Task) error {
 	// run command module
 	if t.Command != "" {
 		r.logInfo("Step command", t.Name)
-		output, exitCode, err := localRun(r.Interpolate(t.Command, t.Vars), nil, t.Cd)
+		cmd := r.Interpolate(t.Command, r.MakeEnv(t.Vars))
+		r.logInfo("Running command", cmd)
+		output, exitCode, err := localRun(cmd, r.MakeEnv(t.Vars), t.Cd)
 		r.ExitCode = exitCode
 		r.logOutput(string(output))
 		if t.Register != "" {

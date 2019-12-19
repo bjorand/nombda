@@ -1,0 +1,7 @@
+vars:
+  foo: bar
+
+tasks:
+  - name: test 1
+    command: echo ${var.foo}
+    register: result

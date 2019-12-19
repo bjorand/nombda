@@ -18,3 +18,14 @@ func ReadSecretFile(filename string) (map[string]string, error) {
 	}
 	return secrets, nil
 }
+
+// func ReadSecretFromEnv() map[string]string {
+// 	secrets := make(map[string]string)
+// 	for _, v := range os.Environ() {
+//     os.Environ()
+// 		if strings.HasPrefix(k, "NOMBDA_SECRET_") {
+// 			secrets[strings.TrimPrefix(k, "NOMBDA_SECRET_")] = v
+// 		}
+// 	}
+// 	return secrets
+// }

@@ -206,6 +206,23 @@ func TestHookHandlerOnFailureContinueAfterFailure(t *testing.T) {
 	}
 }
 
+func TestHookCommandGlobalVariables(t *testing.T) {
+	h, err := ReadHook("tests/hooks", "tests", "test_command_global_vars")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := NewRun(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.AsyncRun(r)
+	output := r.Registers["result"]
+	expected := "bar"
+	if output != expected {
+		t.Fatalf("want %+v, got %+v", expected, output)
+	}
+}
+
 func TestHookCommandSecret(t *testing.T) {
 	h, err := ReadHook("tests/hooks", "tests", "test_command_secret")
 	if err != nil {
