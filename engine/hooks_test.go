@@ -232,3 +232,34 @@ func TestHookCommandSecret(t *testing.T) {
 		}
 	}
 }
+
+func TestHookInjectSecret(t *testing.T) {
+	h, err := ReadHook("tests/hooks", "tests", "test_command_secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := NewRun(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r.Secrets, err = ReadSecretFile("tests/secrets/secrets.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.AsyncRun(r)
+	output := r.Registers["foo"]
+	expected := "secret:bar"
+	if output != expected {
+		t.Fatalf("want %+v, got %+v", expected, output)
+	}
+	for _, line := range strings.Split(r.Log(), "\n") {
+		if strings.HasPrefix(line, "secret:") {
+			output := line
+			expected := "secret:***"
+			if output != expected {
+				t.Fatalf("want %+v, got %+v", expected, output)
+			}
+		}
+	}
+}

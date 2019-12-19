@@ -408,3 +408,7 @@ func (h *Hook) GetRun(id string) (*Run, error) {
 	}
 	return run, nil
 }
+
+func (r *Run) InjectSecrets(secrets map[string]string) {
+	r.Secrets = secrets
+}
