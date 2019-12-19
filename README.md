@@ -146,7 +146,8 @@ tasks:
 - `register` string: save `command` output in specified variable name
 - `cd` string: change directory for running `command`
 - `on_failure` string: if `command` fails, run the specified handler listed in root `handlers`
-- `continue_after_failure` bool: continue to next task if `command` fails.
+- `continue_after_failure` bool: continue to next task if `command` fails
+- `vars` map of string: define default variable for task execution context
 
 
 #### `handler` module attributes
