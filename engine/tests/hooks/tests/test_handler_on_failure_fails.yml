@@ -1,0 +1,14 @@
+handlers:
+  test1:
+    - name: 1
+      command: test "A" = "B"
+
+  test2:
+    - name: 2
+      command: test "A" = "B"
+
+tasks:
+  - handler: test1
+    on_failure: test2
+  - command: echo foo
+    register: bar

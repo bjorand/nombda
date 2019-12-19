@@ -19,7 +19,7 @@ func TestHookOnlyIf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.asyncRun(r)
+	h.AsyncRun(r)
 	output := r.Registers["foo"]
 	expected := ""
 	if output != expected {
@@ -43,7 +43,7 @@ func TestHookRegister(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.asyncRun(r)
+	h.AsyncRun(r)
 	output := r.Registers["foo"]
 	expected := "bar"
 	if output != expected {
@@ -67,7 +67,7 @@ func TestHookHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.asyncRun(r)
+	h.AsyncRun(r)
 	output := r.Registers["foo"]
 	expected := "bar"
 	if output != expected {
@@ -83,7 +83,7 @@ func TestHookHandler(t *testing.T) {
 func TestHookCommandFailure(t *testing.T) {
 	setup()
 
-	h, err := ReadHook("tests/hooks", "tests", "test_command_failure")
+	h, err := ReadHook("tests/hooks", "tests", "test_command_continue_after_failure")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestHookCommandFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.asyncRun(r)
+	h.AsyncRun(r)
 	outputInt := r.ExitCode
 	expectedInt := 2
 	if outputInt != expectedInt {
@@ -120,7 +120,7 @@ func TestHookHandlerVars(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.asyncRun(r)
+	h.AsyncRun(r)
 	outputInt := r.ExitCode
 	expectedInt := 0
 	if outputInt != expectedInt {
@@ -138,6 +138,86 @@ func TestHookHandlerVars(t *testing.T) {
 	}
 	output = r.Registers["arg_c"]
 	expected = "3"
+	if output != expected {
+		t.Fatalf("want %+v, got %+v", expected, output)
+	}
+}
+
+func TestHookHandlerOnFailure(t *testing.T) {
+	setup()
+
+	h, err := ReadHook("tests/hooks", "tests", "test_handler_on_failure")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := NewRun(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.AsyncRun(r)
+	outputInt := r.ExitCode
+	expectedInt := 0
+	if outputInt != expectedInt {
+		t.Fatalf("want %+v, got %+v", expectedInt, outputInt)
+	}
+	output := r.Registers["bar"]
+	expected := "foo"
+	if output != expected {
+		t.Fatalf("want %+v, got %+v", expected, output)
+	}
+}
+
+func TestHookHandlerOnFailureFails(t *testing.T) {
+
+	h, err := ReadHook("tests/hooks", "tests", "test_handler_on_failure_fails")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := NewRun(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.AsyncRun(r)
+	outputInt := r.ExitCode
+	expectedInt := 1
+	if outputInt != expectedInt {
+		t.Fatalf("want %+v, got %+v", expectedInt, outputInt)
+	}
+	output := r.Registers["bar"]
+	expected := ""
+	if output != expected {
+		t.Fatalf("want %+v, got %+v", expected, output)
+	}
+}
+
+func TestHookHandlerOnFailureContinueAfterFailure(t *testing.T) {
+
+	h, err := ReadHook("tests/hooks", "tests", "test_handler_on_failure_continue_after_failure")
+	if err != nil {
+		t.Fatal(err)
+	}
+	outputB := h.Tasks[0].ContinueAfterFailure
+	expectedB := true
+	if outputB != expectedB {
+		t.Fatalf("want %+v, got %+v", expectedB, outputB)
+	}
+	r, err := NewRun(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.AsyncRun(r)
+	outputInt := r.ExitCode
+	expectedInt := 0
+	if outputInt != expectedInt {
+		t.Fatalf("want %+v, got %+v", expectedInt, outputInt)
+	}
+	output := r.Registers["a"]
+	expected := "1"
+	if output != expected {
+		t.Fatalf("want %+v, got %+v", expected, output)
+	}
+	output = r.Registers["bar"]
+	expected = "foo"
 	if output != expected {
 		t.Fatalf("want %+v, got %+v", expected, output)
 	}

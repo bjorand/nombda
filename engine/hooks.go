@@ -109,7 +109,21 @@ func (e *HookEngine) Hooks() ([]*Hook, error) {
 	return hooks, nil
 }
 
+func ReadHookFromFile(p string) (*Hook, error) {
+	data, err := ioutil.ReadFile(p)
+	if err != nil {
+		return nil, err
+	}
+	h := &Hook{}
+	if err := yaml.UnmarshalStrict(data, &h); err != nil {
+		return nil, fmt.Errorf("Unable to validate yaml file: %s", err.Error())
+	}
+	return h, nil
+}
+
 func ReadHook(path string, name string, action string) (*Hook, error) {
+	action = strings.TrimRight(action, ".yml")
+
 	data, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s.yml", path, name, action))
 	if err != nil {
 		return nil, err
@@ -202,39 +216,75 @@ func (r *Run) Interpolate(input string, vars map[string]string) string {
 	return re.Replace(input)
 }
 
+func (r *Run) RunHandler(src *Task, handlerName string) error {
+	r.logInfo("Running handler", handlerName)
+	handlerTasks := r.Hook.Handlers[handlerName]
+	if handlerTasks == nil {
+		r.logError("Unknown handler", handlerName)
+		return fmt.Errorf("Unknown handler %s", handlerName)
+	}
+	for _, handlerTask := range handlerTasks {
+		if handlerTask.Vars == nil {
+			handlerTask.Vars = make(map[string]string)
+		}
+		for k, v := range src.Vars {
+			handlerTask.Vars[k] = r.Interpolate(v, r.Registers)
+		}
+		err := r.RunTask(handlerTask)
+		if err != nil {
+			r.logError("Failure in handler", handlerName)
+			if handlerTask.OnFailure != "" {
+				r.logInfo("Recovering error in handler", handlerName, "with handler", handlerTask.OnFailure)
+				err := r.RunHandler(handlerTask, handlerTask.OnFailure)
+				if err != nil {
+					if !handlerTask.ContinueAfterFailure {
+						return err
+					}
+					return nil
+
+				}
+			}
+			return fmt.Errorf("Failure in handler %s", handlerName)
+		}
+	}
+	return nil
+}
+
 func (r *Run) RunTask(t *Task) error {
 	// only_if is be the first condition
 	if t.OnlyIf != "" {
 		output, exitCode, err := localRun(r.Interpolate(t.OnlyIf, t.Vars), nil, t.Cd)
 		r.ExitCode = exitCode
+		r.Output += string(output)
 		if err != nil {
-			r.Output += string(output)
 			r.logInfo("Skipping step", t.Name)
 			return nil
 		}
 	}
+	// run handler module
 	if t.HandlerName != "" {
-		r.logInfo("Running handler", t.HandlerName)
-		handlers := r.Hook.Handlers[t.HandlerName]
-		if handlers == nil {
-			r.logError("Unknown handler", t.HandlerName)
-			return fmt.Errorf("Unknown handler %s", t.HandlerName)
+		err := r.RunHandler(t, t.HandlerName)
+		if err != nil {
+			if t.OnFailure != "" {
+				r.logInfo("Recovering error in handler", t.HandlerName, "with handler", t.OnFailure)
+				err := r.RunHandler(t, t.OnFailure)
+				if err != nil {
+					if !t.ContinueAfterFailure {
+						return err
+					}
+					r.logInfo("Continue after failure of handler", t.OnFailure)
+					return nil
+				}
+			} else {
+				if !t.ContinueAfterFailure {
+					return err
+				}
+				return nil
+			}
 		}
-		for _, handler := range handlers {
-			if handler.Vars == nil {
-				handler.Vars = make(map[string]string)
-			}
-			for k, v := range t.Vars {
-				handler.Vars[k] = r.Interpolate(v, r.Registers)
-			}
-			err := r.RunTask(handler)
-			if err != nil {
-				r.logError("Failure in handler", t.HandlerName)
-				return fmt.Errorf("Failure in handler %s", t.HandlerName)
-			}
-		}
-		return nil
+
 	}
+	// run command module
 	if t.Command != "" {
 		r.logInfo("Step command", t.Name)
 		output, exitCode, err := localRun(r.Interpolate(t.Command, t.Vars), nil, t.Cd)
@@ -248,18 +298,21 @@ func (r *Run) RunTask(t *Task) error {
 		if err != nil {
 			// run on_failure handler if any
 			if t.OnFailure != "" {
-				handlers := r.Hook.Handlers[t.OnFailure]
-				if len(handlers) == 0 {
-					r.logInfo("Handler [%s] not found", t.OnFailure)
-					return fmt.Errorf("Handler [%s] not found", t.OnFailure)
-				}
-				for _, handler := range handlers {
-					err := r.RunTask(handler)
-					if err != nil {
-						// return fmt.Errorf("Handler [%s] %s failed: %s", step.OnFailure, handler.Name, err.Error())
-						return err
-					}
-				}
+				// 	handlers := r.Hook.Handlers[t.OnFailure]
+				// 	if len(handlers) == 0 {
+				// 		r.logInfo("Handler [%s] not found", t.OnFailure)
+				// 		return fmt.Errorf("Handler [%s] not found", t.OnFailure)
+				// 	}
+				// 	for _, handler := range handlers {
+				// 		err := r.RunTask(handler)
+				// 		if err != nil {
+				// 			if !t.ContinueAfterFailure {
+				// 				return err
+				// 			}
+				// 			r.logInfo("Continue after failure of handler", t.OnFailure)
+				// 			return nil
+				// 		}
+				// 	}
 			}
 			return err
 		}
@@ -298,7 +351,7 @@ func (r *Run) RunTask(t *Task) error {
 	// }
 }
 
-func (h *Hook) asyncRun(run *Run) {
+func (h *Hook) AsyncRun(run *Run) {
 	defer func() {
 		run.Completed = true
 		run.logInfo(fmt.Sprintf("Job %s completed with exit code %d", run.ID, run.ExitCode))
@@ -325,7 +378,7 @@ func (h *Hook) Run() (*Run, error) {
 		return nil, err
 	}
 	runs[run.ID] = run
-	go h.asyncRun(run)
+	go h.AsyncRun(run)
 	return run, nil
 
 }
