@@ -29,6 +29,7 @@ type Run struct {
 	Completed bool
 	Output    string
 	Registers map[string]string
+	Secrets   map[string]string
 }
 
 // type Handler struct {
@@ -183,18 +184,31 @@ func NewRun(h *Hook) (*Run, error) {
 		Hook:      h,
 		ID:        id.String(),
 		Registers: make(map[string]string),
+		Secrets:   make(map[string]string),
 	}
-	// if
-	// h.Runs = make([]*Run, 0)
 	return run, nil
 }
 
+func (r *Run) hideSecrets(input string) string {
+	replacers := make([]string, len(r.Secrets)*2)
+	for _, v := range r.Secrets {
+		replacers = append(replacers, v)
+		replacers = append(replacers, "***")
+	}
+	re := strings.NewReplacer(replacers...)
+	return re.Replace(input)
+}
+
+func (r *Run) logOutput(input string) {
+	r.Output += r.hideSecrets(input)
+}
+
 func (r *Run) logInfo(input ...string) {
-	r.Output += fmt.Sprintf("[INFO] %s\n", strings.Join(input, " "))
+	r.logOutput(fmt.Sprintf("[INFO] %s\n", strings.Join(input, " ")))
 }
 
 func (r *Run) logError(input ...string) {
-	r.Output += fmt.Sprintf("[ERROR] %s\n", strings.Join(input, " "))
+	r.logOutput(fmt.Sprintf("[ERROR] %s\n", strings.Join(input, " ")))
 }
 
 func (r *Run) Interpolate(input string, vars map[string]string) string {
@@ -202,6 +216,12 @@ func (r *Run) Interpolate(input string, vars map[string]string) string {
 	if len(r.Registers) > 0 {
 		for k, v := range r.Registers {
 			replacers = append(replacers, fmt.Sprintf("${var.%s}", k))
+			replacers = append(replacers, v)
+		}
+	}
+	if len(r.Secrets) > 0 {
+		for k, v := range r.Secrets {
+			replacers = append(replacers, fmt.Sprintf("${secret.%s}", k))
 			replacers = append(replacers, v)
 		}
 	}
@@ -253,7 +273,7 @@ func (r *Run) RunTask(t *Task) error {
 	if t.OnlyIf != "" {
 		output, exitCode, err := localRun(r.Interpolate(t.OnlyIf, t.Vars), nil, t.Cd)
 		r.ExitCode = exitCode
-		r.Output += string(output)
+		r.logOutput(string(output))
 		if err != nil {
 			r.logInfo("Skipping step", t.Name)
 			return nil
@@ -287,7 +307,7 @@ func (r *Run) RunTask(t *Task) error {
 		r.logInfo("Step command", t.Name)
 		output, exitCode, err := localRun(r.Interpolate(t.Command, t.Vars), nil, t.Cd)
 		r.ExitCode = exitCode
-		r.Output += string(output)
+		r.logOutput(string(output))
 		if t.Register != "" {
 			r.Registers[t.Register] = strings.TrimSpace(string(output))
 		}
