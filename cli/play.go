@@ -23,6 +23,8 @@ func main() {
 		log.Fatal("No file specified with -f")
 	}
 
+	hookEngine := engine.NewHookEngine("")
+
 	secrets := make(map[string]string)
 	var err error
 	if secretFile != "" {
@@ -34,8 +36,8 @@ func main() {
 	for k, v := range engine.ReadSecretFromEnv() {
 		secrets[k] = v
 	}
-
-	h, err := engine.ReadHookFromFile(hookFile)
+	hookEngine.Secrets = secrets
+	h, err := hookEngine.ReadHookFromFile(hookFile)
 	if err != nil {
 		panic(err)
 	}
@@ -44,7 +46,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	r.InjectSecrets(secrets)
 	h.AsyncRun(r)
 	fmt.Println(r.Log())
 	os.Exit(r.ExitCode)
