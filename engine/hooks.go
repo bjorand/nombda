@@ -122,8 +122,6 @@ func ReadHookFromFile(p string) (*Hook, error) {
 }
 
 func ReadHook(path string, name string, action string) (*Hook, error) {
-	action = strings.TrimRight(action, ".yml")
-
 	data, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s.yml", path, name, action))
 	if err != nil {
 		return nil, err
