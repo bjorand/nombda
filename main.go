@@ -126,7 +126,11 @@ func main() {
 			c.JSON(http.StatusNotFound, gin.H{"message": err})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"run": run})
+		c.JSON(http.StatusOK, gin.H{"run": gin.H{
+			"completed": run.Completed,
+			"id":        run.ID,
+			"exit_code": run.ExitCode,
+		}})
 	})
 
 	authorized.GET("/hooks/:id/:action/:run_id/log", func(c *gin.Context) {

@@ -59,7 +59,6 @@ type Hook struct {
 	Handlers   map[string][]*Task `yaml:"handlers"`
 	Tasks      []*Task            `yaml:"tasks"`
 	GlobalVars map[string]string  `yaml:"vars"`
-	Runs       []*Run
 	HookEngine *HookEngine
 }
 
@@ -80,6 +79,7 @@ type HookEngine struct {
 }
 
 func NewHookEngine(configDir string) *HookEngine {
+	runs = make(map[string]*Run)
 	return &HookEngine{
 		ConfigDir: configDir,
 		Secrets:   make(map[string]string),
@@ -402,6 +402,7 @@ func (h *Hook) AsyncRun(run *Run) {
 		run.Completed = true
 		run.logInfo(fmt.Sprintf("Job %s completed with exit code %d", run.ID, run.ExitCode))
 	}()
+	runs[run.ID] = run
 	run.logInfo("Starting job", run.ID)
 	for _, task := range h.Tasks {
 		err := run.RunTask(task)
@@ -423,7 +424,6 @@ func (h *Hook) Run() (*Run, error) {
 	if err != nil {
 		return nil, err
 	}
-	runs[run.ID] = run
 	go h.AsyncRun(run)
 	return run, nil
 
