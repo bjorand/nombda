@@ -5,8 +5,17 @@ import (
 	"testing"
 )
 
+var (
+	e *HookEngine
+)
+
+func setup() {
+	e = NewHookEngine("")
+}
+
 func TestHookOnlyIf(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_only_if")
+	setup()
+	h, err := e.ReadHook("tests/hooks", "tests", "test_only_if")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +37,8 @@ func TestHookOnlyIf(t *testing.T) {
 }
 
 func TestHookRegister(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_register")
+	setup()
+	h, err := e.ReadHook("tests/hooks", "tests", "test_register")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +60,8 @@ func TestHookRegister(t *testing.T) {
 }
 
 func TestHookHandler(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_handler")
+	setup()
+	h, err := e.ReadHook("tests/hooks", "tests", "test_handler")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +83,8 @@ func TestHookHandler(t *testing.T) {
 }
 
 func TestHookCommandFailure(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_command_continue_after_failure")
+	setup()
+	h, err := e.ReadHook("tests/hooks", "tests", "test_command_continue_after_failure")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +111,8 @@ func TestHookCommandFailure(t *testing.T) {
 }
 
 func TestHookHandlerVars(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_handler_vars")
+	setup()
+	h, err := e.ReadHook("tests/hooks", "tests", "test_handler_vars")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +144,8 @@ func TestHookHandlerVars(t *testing.T) {
 }
 
 func TestHookHandlerOnFailure(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_handler_on_failure")
+	setup()
+	h, err := e.ReadHook("tests/hooks", "tests", "test_handler_on_failure")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +167,8 @@ func TestHookHandlerOnFailure(t *testing.T) {
 }
 
 func TestHookHandlerOnFailureFails(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_handler_on_failure_fails")
+	setup()
+	h, err := e.ReadHook("tests/hooks", "tests", "test_handler_on_failure_fails")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +190,8 @@ func TestHookHandlerOnFailureFails(t *testing.T) {
 }
 
 func TestHookHandlerOnFailureContinueAfterFailure(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_handler_on_failure_continue_after_failure")
+	setup()
+	h, err := e.ReadHook("tests/hooks", "tests", "test_handler_on_failure_continue_after_failure")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +223,8 @@ func TestHookHandlerOnFailureContinueAfterFailure(t *testing.T) {
 }
 
 func TestHookCommandGlobalVariables(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_command_global_vars")
+	setup()
+	h, err := e.ReadHook("tests/hooks", "tests", "test_command_global_vars")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -224,7 +241,9 @@ func TestHookCommandGlobalVariables(t *testing.T) {
 }
 
 func TestHookCommandSecret(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_command_secret")
+	setup()
+	e.Secrets["foo"] = "123"
+	h, err := e.ReadHook("tests/hooks", "tests", "test_command_secret")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +251,6 @@ func TestHookCommandSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r.Secrets["foo"] = "123"
 	h.AsyncRun(r)
 	output := r.Registers["foo"]
 	expected := "secret:123"
@@ -251,7 +269,8 @@ func TestHookCommandSecret(t *testing.T) {
 }
 
 func TestHookInjectSecret(t *testing.T) {
-	h, err := ReadHook("tests/hooks", "tests", "test_command_secret")
+	setup()
+	h, err := e.ReadHook("tests/hooks", "tests", "test_command_secret")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -78,6 +78,7 @@ func main() {
 	}
 
 	hookEngine := engine.NewHookEngine(configDir)
+	hookEngine.Secrets = engine.ReadSecretFromEnv()
 
 	router := gin.Default()
 	router.Use(gin.Recovery())
@@ -101,7 +102,7 @@ func main() {
 	})
 
 	authorized.POST("/hooks/:id/:action", func(c *gin.Context) {
-		hook, err := engine.ReadHook(configDir, c.Param("id"), c.Param("action"))
+		hook, err := hookEngine.ReadHook(configDir, c.Param("id"), c.Param("action"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 			return
@@ -115,7 +116,7 @@ func main() {
 	})
 
 	authorized.GET("/hooks/:id/:action/:run_id", func(c *gin.Context) {
-		hook, err := engine.ReadHook(configDir, c.Param("id"), c.Param("action"))
+		hook, err := hookEngine.ReadHook(configDir, c.Param("id"), c.Param("action"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 			return
@@ -129,7 +130,7 @@ func main() {
 	})
 
 	authorized.GET("/hooks/:id/:action/:run_id/log", func(c *gin.Context) {
-		hook, err := engine.ReadHook(configDir, c.Param("id"), c.Param("action"))
+		hook, err := hookEngine.ReadHook(configDir, c.Param("id"), c.Param("action"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 			return

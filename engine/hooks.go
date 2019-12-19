@@ -60,6 +60,7 @@ type Hook struct {
 	Tasks      []*Task            `yaml:"tasks"`
 	GlobalVars map[string]string  `yaml:"vars"`
 	Runs       []*Run
+	HookEngine *HookEngine
 }
 
 // type HookStep struct {
@@ -75,12 +76,13 @@ type HookStepRunResponse struct {
 
 type HookEngine struct {
 	ConfigDir string
+	Secrets   map[string]string
 }
 
 func NewHookEngine(configDir string) *HookEngine {
-	runs = make(map[string]*Run, 1024)
 	return &HookEngine{
 		ConfigDir: configDir,
+		Secrets:   make(map[string]string),
 	}
 }
 
@@ -101,7 +103,7 @@ func (e *HookEngine) Hooks() ([]*Hook, error) {
 		actionFileName := filepath.Base(actionFilename)
 		extension := filepath.Ext(actionFileName)
 		action := actionFileName[0 : len(actionFileName)-len(extension)]
-		hook, err := ReadHook(e.ConfigDir, id, action)
+		hook, err := e.ReadHook(e.ConfigDir, id, action)
 		if err != nil {
 			return nil, err
 		}
@@ -111,24 +113,28 @@ func (e *HookEngine) Hooks() ([]*Hook, error) {
 	return hooks, nil
 }
 
-func ReadHookFromFile(p string) (*Hook, error) {
+func (e *HookEngine) ReadHookFromFile(p string) (*Hook, error) {
 	data, err := ioutil.ReadFile(p)
 	if err != nil {
 		return nil, err
 	}
-	h := &Hook{}
+	h := &Hook{
+		HookEngine: e,
+	}
 	if err := yaml.UnmarshalStrict(data, &h); err != nil {
 		return nil, fmt.Errorf("Unable to validate yaml file: %s", err.Error())
 	}
 	return h, nil
 }
 
-func ReadHook(path string, name string, action string) (*Hook, error) {
+func (e *HookEngine) ReadHook(path string, name string, action string) (*Hook, error) {
 	data, err := ioutil.ReadFile(fmt.Sprintf("%s/%s/%s.yml", path, name, action))
 	if err != nil {
 		return nil, err
 	}
-	h := &Hook{}
+	h := &Hook{
+		HookEngine: e,
+	}
 	if err := yaml.UnmarshalStrict(data, &h); err != nil {
 		return nil, fmt.Errorf("Unable to validate yaml file: %s", err.Error())
 	}
@@ -185,7 +191,7 @@ func NewRun(h *Hook) (*Run, error) {
 		Hook:      h,
 		ID:        id.String(),
 		Registers: make(map[string]string),
-		Secrets:   make(map[string]string),
+		Secrets:   h.HookEngine.Secrets,
 	}
 	return run, nil
 }
