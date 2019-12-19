@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -12,12 +13,13 @@ import (
 )
 
 var (
-	log        = logrus.New()
-	listenAddr string
-	token      = os.Getenv("NOMBDA_TOKEN")
-	configDir  = os.Getenv("CONFIG_DIR")
-	version    string
-	hookEngine *engine.HookEngine
+	log         = logrus.New()
+	listenAddr  string
+	token       = os.Getenv("NOMBDA_TOKEN")
+	configDir   = os.Getenv("CONFIG_DIR")
+	version     string
+	showVersion bool
+	hookEngine  *engine.HookEngine
 )
 
 type tokenHeader struct {
@@ -57,7 +59,13 @@ func isTokenAuthenticated(c *gin.Context) bool {
 
 func main() {
 	flag.StringVar(&listenAddr, "listen-addr", ":8080", "server listen address")
+	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.Parse()
+
+	if showVersion {
+		fmt.Printf("nopm-sh version %s", version)
+		os.Exit(0)
+	}
 
 	token = strings.TrimSpace(token)
 	if token == "" {
