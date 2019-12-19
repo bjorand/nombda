@@ -185,23 +185,27 @@ func (r *Run) logError(input ...string) {
 	r.Output += fmt.Sprintf("[ERROR] %s\n", strings.Join(input, " "))
 }
 
-func (r *Run) CommandParser(cmd string) string {
-	if len(r.Registers) == 0 {
-		return cmd
-	}
+func (r *Run) Interpolate(input string, vars map[string]string) string {
 	replacers := make([]string, len(r.Registers)*2)
-	for k, v := range r.Registers {
-		replacers = append(replacers, fmt.Sprintf("${%s}", k))
+	if len(r.Registers) > 0 {
+		for k, v := range r.Registers {
+			replacers = append(replacers, fmt.Sprintf("${var.%s}", k))
+			replacers = append(replacers, v)
+		}
+	}
+
+	for k, v := range vars {
+		replacers = append(replacers, fmt.Sprintf("${var.%s}", k))
 		replacers = append(replacers, v)
 	}
 	re := strings.NewReplacer(replacers...)
-	return re.Replace(cmd)
+	return re.Replace(input)
 }
 
 func (r *Run) RunTask(t *Task) error {
 	// only_if is be the first condition
 	if t.OnlyIf != "" {
-		output, exitCode, err := localRun(r.CommandParser(t.OnlyIf), nil, t.Cd)
+		output, exitCode, err := localRun(r.Interpolate(t.OnlyIf, t.Vars), nil, t.Cd)
 		r.ExitCode = exitCode
 		if err != nil {
 			r.Output += string(output)
@@ -217,6 +221,12 @@ func (r *Run) RunTask(t *Task) error {
 			return fmt.Errorf("Unknown handler %s", t.HandlerName)
 		}
 		for _, handler := range handlers {
+			if handler.Vars == nil {
+				handler.Vars = make(map[string]string)
+			}
+			for k, v := range t.Vars {
+				handler.Vars[k] = r.Interpolate(v, r.Registers)
+			}
 			err := r.RunTask(handler)
 			if err != nil {
 				r.logError("Failure in handler", t.HandlerName)
@@ -227,7 +237,7 @@ func (r *Run) RunTask(t *Task) error {
 	}
 	if t.Command != "" {
 		r.logInfo("Step command", t.Name)
-		output, exitCode, err := localRun(r.CommandParser(t.Command), nil, t.Cd)
+		output, exitCode, err := localRun(r.Interpolate(t.Command, t.Vars), nil, t.Cd)
 		r.ExitCode = exitCode
 		r.Output += string(output)
 		if t.Register != "" {
@@ -251,6 +261,7 @@ func (r *Run) RunTask(t *Task) error {
 					}
 				}
 			}
+			return err
 		}
 	}
 	return nil
@@ -297,6 +308,7 @@ func (h *Hook) asyncRun(run *Run) {
 		err := run.RunTask(task)
 		if err != nil {
 			if task.ContinueAfterFailure {
+				run.logInfo("Continue after failure of task", task.Name)
 				continue
 			}
 			return

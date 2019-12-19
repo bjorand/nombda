@@ -1,0 +1,13 @@
+handlers:
+  test1:
+    - name: 1
+      command: echo bar
+      register: foo
+    - handler: test2
+  test2:
+    - name: 2
+      command: echo foo
+      register: bar
+
+tasks:
+  - handler: test1

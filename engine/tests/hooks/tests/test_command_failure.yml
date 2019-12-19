@@ -1,0 +1,12 @@
+tasks:
+  - name: skip failure
+    command: exit 2
+    continue_after_failure: true
+  - name: set 1
+    command: echo foo
+    register: bar
+  - name: failure
+    command: exit 2
+  - name: set 2
+    command: echo bar
+    register: foo

@@ -1,0 +1,28 @@
+handlers:
+  test1:
+    - name: 1
+      command: echo ${var.a}
+      register: arg_a
+
+  test2:
+    - name: 2
+      command: echo ${var.b}
+      register: arg_b
+  test3:
+    - name: 3
+      vars:
+        c: 3
+      command: echo ${var.c}
+      register: arg_c
+
+tasks:
+  - handler: test1
+    vars:
+      a: 1
+  - name: set k=2
+    command: echo 2
+    register: k
+  - handler: test2
+    vars:
+      b: ${var.k}
+  - handler: test3
