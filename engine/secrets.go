@@ -3,6 +3,8 @@ package engine
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -19,13 +21,15 @@ func ReadSecretFile(filename string) (map[string]string, error) {
 	return secrets, nil
 }
 
-// func ReadSecretFromEnv() map[string]string {
-// 	secrets := make(map[string]string)
-// 	for _, v := range os.Environ() {
-//     os.Environ()
-// 		if strings.HasPrefix(k, "NOMBDA_SECRET_") {
-// 			secrets[strings.TrimPrefix(k, "NOMBDA_SECRET_")] = v
-// 		}
-// 	}
-// 	return secrets
-// }
+func ReadSecretFromEnv() map[string]string {
+	secrets := make(map[string]string)
+	for _, env := range os.Environ() {
+		s := strings.Split(env, "=")
+		k := s[0]
+		v := strings.TrimPrefix(env, fmt.Sprintf("%s=", k))
+		if strings.HasPrefix(k, "NOMBDA_SECRET_") {
+			secrets[strings.ToLower(strings.TrimPrefix(k, "NOMBDA_SECRET_"))] = v
+		}
+	}
+	return secrets
+}

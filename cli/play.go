@@ -31,6 +31,10 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+	for k, v := range engine.ReadSecretFromEnv() {
+		secrets[k] = v
+	}
+
 	h, err := engine.ReadHookFromFile(hookFile)
 	if err != nil {
 		panic(err)

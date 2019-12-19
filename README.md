@@ -203,7 +203,23 @@ tasks:
   - handler: notify_deployment
 ```
 
-### Interpolation
+### Secrets
+
+Nombda jobs can use secrets with a reference like `${secret.NAME}`.
+
+You can start nombda server with environment variables prefixed by `NOMBDA_SECRET_`:
+
+```
+NOMBDA_SECRET_DOCKER_LOGIN=foobar NOMBDA_SECRET_DOCKER_PASSWORD=pass nombda
+```
+Note that nombda stores secret keys in lowercase. You can then reference your secret in your job yaml file:
+```
+tasks:
+  - name: login
+    command: docker login -u ${secret.docker_login} -p ${secret.docker_password}
+```
+
+### Interpolation syntax
 
 ```
 tasks:
@@ -214,9 +230,11 @@ tasks:
     command: echo ${var.a}
 ```
 Command raw `echo ${var.a}` string will be evaluated and replace by:
-`echo 1` for execution.
+`echo ${a}` for execution.
 
 `{var.NAME}` can interpolate variables created with keyword `vars` or `register`.
+
+`{secret.NAME}` interpolate variable registered as secrets.
 
 ## License
 

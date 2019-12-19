@@ -260,10 +260,11 @@ func TestHookInjectSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r.Secrets, err = ReadSecretFile("tests/secrets/secrets.yml")
+	secrets, err := ReadSecretFile("tests/secrets/secrets.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
+	r.InjectSecrets(secrets)
 	h.AsyncRun(r)
 	output := r.Registers["foo"]
 	expected := "secret:bar"
