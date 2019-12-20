@@ -13,6 +13,7 @@ RUN apt-get update && \
     apt-transport-https \
     ca-certificates \
     curl \
+    jq \
     git \
     gnupg2 \
   	lsb-release && \
